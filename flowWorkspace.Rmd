@@ -1,0 +1,32 @@
+---
+title: "flowWorkspace"
+author: "Jordi Camps"
+date: "2018 M03 28"
+output: html_document
+---
+
+```{r message=FALSE}
+library(flowWorkspace)
+library(ggplot2)
+```
+
+# Load FlowJo workspace
+```{r}
+(ws <- openWorkspace("data/27-Mar-2018 TNAP-YFP D10.wsp"))
+```
+
+Access list of samples
+```{r}
+getSamples(ws)
+```
+
+Acces groups
+```{r}
+getSampleGroups(ws)
+```
+
+# Parsing the workspace
+```{r}
+(gs <- parseWorkspace(ws, name = 1))
+```
+
