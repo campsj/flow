@@ -1,7 +1,7 @@
 ---
 title: "flowWorkspace and ggcyto"
 author: "Jordi Camps"
-date: "2018 M03 28"
+date: "2018 31 05"
 output: html_document
 ---
 
@@ -11,66 +11,54 @@ library(ggplot2)
 library(ggcyto)
 ```
 
+This workflow uses several packages to analyze flow data in R. It starts from your raw .fcs files and a .wsp file where you already compensated and analyzed your data. This makes it very handy to plot your data in R. You can also compensate and gate your data yourself but this is not covered in this workflow.
+
+# Before starting
+Make sure you have your *.fcs* files and you already analyzed your data with flow and saved it to a *.wsp* file.
+You put all these files in the **data** folder.
+
 # Load FlowJo workspace
+Load the workspace in the R session.
 ```{r}
-(ws <- openWorkspace("data/04-Apr-2018.wsp"))
+(ws <- openWorkspace("data/31-May-2018 TY8-12.wsp"))
 ```
 
-Access list of samples
+Access list of samples.
 ```{r}
 getSamples(ws)
 ```
 
-Acces groups
+Acces groups.
 ```{r}
 getSampleGroups(ws)
 ```
 
-```{r}
-sn <- "data/Sample_TY_1_019.fcs"
+
+```{r eval=FALSE, include=FALSE}
+sn <- "data/EXAMPLE_FCS_FILE.fcs"
 getKeywords(ws, sn)
 ```
 
 
 # Parsing the workspace
 In order to get more from the gating tree we need to parse the XML workspace into R data structures to represent the information therein.
+The **name** variable has to be the name or number of the designated group that you want to analyze. If you didn't make any groups just leave it as 1.
 ```{r message=FALSE}
-(gs <- parseWorkspace(ws, name = "Sample"))
+(gs <- parseWorkspace(ws, name = 1))
 ```
 
+Print your samples names.
 ```{r}
 sampleNames(gs)
 ```
 
 ## Basics on GatingSet
-plot gating tree
+plot gating tree.
 ```{r}
 plot(gs)
 ```
 
-Get nodes of the first path
-```{r}
-getNodes(gs, path = 1)
-```
-
-Get nodes of all paths
-```{r}
-getNodes(gs, path = "full")
-```
-
-Get nodes with shortest defined path
-```{r}
-nodelist <- getNodes(gs, path = "auto")
-nodelist
-```
-
-Get gate associated to specific population
-```{r}
-node <- nodelist[7]
-(g <- getGate(gs, node))
-```
-
-Retrieve population statistics
+Retrieve population statistics.
 ```{r}
 getPopStats(gs)
 ```
@@ -80,22 +68,15 @@ Plot individual gates
 plotGate(gs, "Lin-7AAD-")
 ```
 
-Attach metadata to GatingSet
-```{r eval=FALSE, include=FALSE}
-d <- data.frame(sample = factor(c(paste("FMO", c("Itga7_PE_Vio770", "Alpl_PE", "Sca1_SB436"), sep = "_"), paste("TNAP-YFP", 1:7, sep = " "))))
-pd <- pData(gs)
-pd <- cbind(pd, d)
-pData(gs) <- pd
-pData(gs)
-```
-
-Retrieve underlying flow data
+Retrieve underlying flow data. This gives you a ncdfFlow object, from this object you can get to the data and do furter analysis.
 ```{r}
 fs <- getData(gs)
 class(fs)
 ```
 
 # Plotting gated data
+The plotting function of flowworkspace is not the best, that's why we use ggcyto from this moment on. This plots nice ggplot objects which you can also stack with different layers (check ggplot2 package).
+
 ## Plot gating tree
 ```{r}
 plot(gs)
@@ -104,16 +85,10 @@ plot(gs, "Lin-7AAD-")
 ```
 
 ## Plot with ggcyto
-
-```{r}
-getData(gs[[1]])
-```
-
-
 Plot with ggplot not recommended
 ```{r}
-fs <- getData(gs[[4]], "Lin-7AAD-")
-ggplot(fs, aes(y = `Comp-BV421-A`, x = `Comp-FITC-A`)) +
+fs <- getData(gs, "Lin-7AAD-")
+ggplot(fs, aes(y = `Lin PE`, x = `7AAD`)) +
   geom_hex(bins = 128) +
   axis_x_inverse_trans() +
   axis_y_inverse_trans() #+
@@ -121,7 +96,6 @@ ggplot(fs, aes(y = `Comp-BV421-A`, x = `Comp-FITC-A`)) +
 ```
 
 Data are stored transformed. When plotting, axes are scales to show raw values. The latest patch on RGlab/ggcyto lets you pass axis_inverse_trans=FALSE to autoplot to show raw values (otherwise you need to build up the plot with ggcyto and pass it in there).
-
 ```{r fig.height=10, fig.width=10}
 ggcyto(gs, aes(y = `Comp-BV421-A`, x = `Comp-FITC-A`)) +
   geom_hex(bins = 128) +
@@ -133,16 +107,20 @@ ggcyto(gs, aes(y = `Comp-BV421-A`, x = `Comp-FITC-A`)) +
 ```
 
 ```{r}
-autoplot(fs, "Comp-FITC-A", "Comp-BV421-A", bins = 64)
+autoplot(fs, "Lin PE", "7AAD", bins = 64)
 ```
 
-
+Most reccomended and easiest way of plotting. Make sure that you fill in the markers on the cytometer to make sure that you are able to plot your data in this way!
 ```{r}
-autoplot(gs[[4]], c("Alpl+Sca1-", "Alpl+Sca1+", "Alpl-Sca1+"), bins = 64)
+#fs <- getData(gs, "Cd34+Sca1+")
+autoplot(gs[[7]], "Cd34+Sca1+Alpl+", bins = 64)
 ```
 
 ```{r}
 closeWorkspace(ws)
 ```
 
+```{r}
+sessionInfo()
+```
 
