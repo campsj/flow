@@ -1,18 +1,19 @@
 ---
-title: "flowWorkspace"
+title: "flowWorkspace and ggcyto"
 author: "Jordi Camps"
 date: "2018 M03 28"
 output: html_document
 ---
 
-```{r message=FALSE}
+```{r message=TRUE}
 library(flowWorkspace)
 library(ggplot2)
+library(ggcyto)
 ```
 
 # Load FlowJo workspace
 ```{r}
-(ws <- openWorkspace("data/27-Mar-2018 TNAP-YFP D10.wsp"))
+(ws <- openWorkspace("data/04-Apr-2018.wsp"))
 ```
 
 Access list of samples
@@ -25,8 +26,123 @@ Acces groups
 getSampleGroups(ws)
 ```
 
-# Parsing the workspace
 ```{r}
-(gs <- parseWorkspace(ws, name = 1))
+sn <- "data/Sample_TY_1_019.fcs"
+getKeywords(ws, sn)
 ```
+
+
+# Parsing the workspace
+In order to get more from the gating tree we need to parse the XML workspace into R data structures to represent the information therein.
+```{r message=FALSE}
+(gs <- parseWorkspace(ws, name = "Sample"))
+```
+
+```{r}
+sampleNames(gs)
+```
+
+## Basics on GatingSet
+plot gating tree
+```{r}
+plot(gs)
+```
+
+Get nodes of the first path
+```{r}
+getNodes(gs, path = 1)
+```
+
+Get nodes of all paths
+```{r}
+getNodes(gs, path = "full")
+```
+
+Get nodes with shortest defined path
+```{r}
+nodelist <- getNodes(gs, path = "auto")
+nodelist
+```
+
+Get gate associated to specific population
+```{r}
+node <- nodelist[7]
+(g <- getGate(gs, node))
+```
+
+Retrieve population statistics
+```{r}
+getPopStats(gs)
+```
+
+Plot individual gates
+```{r}
+plotGate(gs, "Lin-7AAD-")
+```
+
+Attach metadata to GatingSet
+```{r eval=FALSE, include=FALSE}
+d <- data.frame(sample = factor(c(paste("FMO", c("Itga7_PE_Vio770", "Alpl_PE", "Sca1_SB436"), sep = "_"), paste("TNAP-YFP", 1:7, sep = " "))))
+pd <- pData(gs)
+pd <- cbind(pd, d)
+pData(gs) <- pd
+pData(gs)
+```
+
+Retrieve underlying flow data
+```{r}
+fs <- getData(gs)
+class(fs)
+```
+
+# Plotting gated data
+## Plot gating tree
+```{r}
+plot(gs)
+plot(gs, "Single Cells")
+plot(gs, "Lin-7AAD-")
+```
+
+## Plot with ggcyto
+
+```{r}
+getData(gs[[1]])
+```
+
+
+Plot with ggplot not recommended
+```{r}
+fs <- getData(gs[[4]], "Lin-7AAD-")
+ggplot(fs, aes(y = `Comp-BV421-A`, x = `Comp-FITC-A`)) +
+  geom_hex(bins = 128) +
+  axis_x_inverse_trans() +
+  axis_y_inverse_trans() #+
+  #geom_gate("Lin-Live")
+```
+
+Data are stored transformed. When plotting, axes are scales to show raw values. The latest patch on RGlab/ggcyto lets you pass axis_inverse_trans=FALSE to autoplot to show raw values (otherwise you need to build up the plot with ggcyto and pass it in there).
+
+```{r fig.height=10, fig.width=10}
+ggcyto(gs, aes(y = `Comp-BV421-A`, x = `Comp-FITC-A`)) +
+  geom_hex(bins = 128) +
+  geom_gate(c("Alpl+Sca1-", "Alpl+Sca1+", "Alpl-Sca1+")) +
+  geom_stats() +
+  axis_x_inverse_trans() +
+  axis_y_inverse_trans() +
+  labs_cyto("marker")
+```
+
+```{r}
+autoplot(fs, "Comp-FITC-A", "Comp-BV421-A", bins = 64)
+```
+
+
+```{r}
+autoplot(gs[[4]], c("Alpl+Sca1-", "Alpl+Sca1+", "Alpl-Sca1+"), bins = 64)
+```
+
+```{r}
+closeWorkspace(ws)
+```
+
 
